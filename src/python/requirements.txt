@@ -1,0 +1,11 @@
+plotly
+matplotlib
+clickhouse-driver
+numpy
+pandas
+fastapi
+uvicorn[standard]
+gunicorn
+flake8
+autopep8
+

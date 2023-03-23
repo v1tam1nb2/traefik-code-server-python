@@ -1,0 +1,80 @@
+version: "3.3"
+services:
+  traefik:
+    image: traefik:latest
+    container_name: "traefik"
+    ports:
+      - "80:80"
+      - "18000:8080"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - ./src/traefik/traefik.yml:/etc/traefik/traefik.yml
+
+  code-server-python:
+    #image: code-server-python
+    image: traekit-test:dev
+    container_name: code-server-python
+    hostname: code-server-python
+    restart: always
+    volumes:
+      - ./volumes/code-data:/code-data
+    labels:
+      # traefik でのルーティング対象とする
+      - traefik.enable=true
+      #------------------------------
+      # code.localhostでcode-serverにアクセスするための設定
+      # code-server という名前のルーターを定義し、
+      # エントリーポイント http (traefik.ymlで設定した任意の名前) と関連付け
+      - traefik.http.routers.code-server.entrypoints=http
+      # ルーター code-server のホスト名を "code.localhost" に設定
+      - traefik.http.routers.code-server.rule=Host(`code.localhost`)
+      # code-server-service という名前のサービスを定義し、ルーター code-server と関連付け
+      - traefik.http.routers.code-server.service=code-server-service
+      # code-server-serviceへのアクセスをポート3000 へ飛ばす
+      - traefik.http.services.code-server-service.loadbalancer.server.port=8888
+      #------------------------------
+      # # Fastapiにアクセスするための設定
+      - traefik.http.routers.fastapi.rule=Host(`fastapi.localhost`)
+      - traefik.http.routers.fastapi.entrypoints=http
+      - traefik.http.routers.fastapi.service=fastapi-service
+      - traefik.http.services.fastapi-service.loadbalancer.server.port=8000
+
+  sqlpad:
+    image: sqlpad/sqlpad:latest
+    container_name: sqlpad
+    hostname: sqlpad
+    restart: always
+    environment:
+      # 認証を無効化する
+      SQLPAD_AUTH_DISABLED: true
+      # ユーザーのロールを定める（admin or editor）
+      SQLPAD_AUTH_DISABLED_DEFAULT_ROLE: admin
+      # ログレベルの定義
+      SQLPAD_APP_LOG_LEVEL: info
+      SQLPAD_WEB_LOG_LEVEL: warn
+    volumes:
+      - ./volumes/sqlpad:/var/lib/sqlpad
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.sqlpad.rule=Host(`sqlpad.localhost`)
+      - traefik.http.routers.sqlpad.entrypoints=http
+      - traefik.http.services.sqlpad.loadbalancer.server.port=3000
+
+  clickhouse:
+    image: yandex/clickhouse-server:22.1.3.7
+    container_name: clickhouse
+    hostname: clickhouse
+    tty: true
+    volumes:
+      - ./volumes/click-data/var/lib/clickhouse:/var/lib/clickhouse
+      - ./volumes/click-data/var/log/clickhouse-server:/var/log/clickhouse-server
+    # labels:
+    #   # traefik でのルーティング対象とする
+    #   - 'traefik.enable=true'
+    #   # TCPルータを追加
+    #   # Traefikがこのコンテナにプロキシする条件を設定
+    #   - 'traefik.tcp.routers.clickhouse.rule=HostSNI(`*`)'
+    #   # エントリーポイントの設定
+    #   - 'traefik.tcp.routers.clickhouse.entrypoints=clickhouse'
+    #   # このサービスが9000番ポートを通して外部と通信することを宣言
+    #   - 'traefik.tcp.services.clickhouse.loadbalancer.server.port=9000'

@@ -1,0 +1,22 @@
+# Provider
+providers:
+  docker:
+    exposedByDefault: false
+
+# エントリーポイント
+entryPoints:
+  http:
+    address: ":80"
+  # clickhouse:
+  #   address: ":9000"
+  # udp-test:
+  #   address: ":3179/udp"
+
+api:
+  # Dashboard有効化
+  dashboard: true
+  insecure: true
+
+# ログレベル
+log:
+  level: DEBUG
